@@ -282,12 +282,9 @@
 .matrix .category-row strong:before{background:var(--module-color)}
 .matrix .matrix-date-cell{border-bottom:0;background:var(--card)}
 .matrix .matrix-date{min-height:40px;padding:13px 8px 7px;font-weight:500}
-.matrix .matrix-date-cell.is-active{color:var(--activity-ink);background:color-mix(in srgb,var(--module-color) 5%,var(--card));box-shadow:none}
-.matrix .matrix-date-cell.is-past .matrix-date{opacity:1;color:var(--muted-foreground)}
 .matrix .activity-tone .matrix-date:hover{background:color-mix(in srgb,var(--module-color) 10%,var(--card));color:var(--activity-ink)}
 .matrix .activity-tone .matrix-date:focus-visible{outline-color:var(--progress-color)}
 .matrix .matrix-progress-cell{padding:2px 22px 17px;background:var(--card)}
-.matrix .matrix-progress-cell.is-active{background:color-mix(in srgb,var(--module-color) 5%,var(--card))}
 .matrix-window-progress{width:100%;padding-top:2px;text-align:left}
 .matrix-progress-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:26px;margin-bottom:8px}
 .matrix-progress-heading>span:first-child{display:inline-flex;align-items:center;gap:6px;color:var(--muted-foreground);font-size:11px;line-height:1.35}
@@ -524,3 +521,32 @@
 @media(max-width:600px){.matrix.module-matrix{--matrix-activity-width:290px;--matrix-module-width:280px}.matrix.module-matrix .matrix-module-header{font-size:18px}.matrix.module-matrix .activity-col{padding:12px 15px}.matrix.module-matrix .matrix-activity-summary{gap:12px}.matrix.module-matrix .matrix-activity-main{gap:10px}.matrix.module-matrix .activity-name{font-size:16px}.matrix.module-matrix .activity-symbol{flex-basis:32px;width:32px;height:32px}.matrix.module-matrix .activity-symbol svg{width:19px;height:19px}.matrix.module-matrix .matrix-date{font-size:17px}.matrix.module-matrix .matrix-progress-heading>span:first-child,.matrix.module-matrix .matrix-progress-caption,.matrix.module-matrix .matrix-milestone-status{font-size:12px}.matrix.module-matrix .matrix-progress-value{font-size:16px}}
 
 .matrix-window-progress.single-date .matrix-milestone-status{display:block;text-align:center;margin-bottom:9px}
+
+/* O estado acompanha o intervalo completo, inclusive início, término e datas pontuais. */
+.matrix{--matrix-active-background:#13352c;--matrix-active-line:#36896a;--matrix-active-ink:#79ebae;--matrix-active-accent:#34d399;--matrix-past-background:color-mix(in srgb,#94a3b8 6%,var(--card));--matrix-past-ink:#8c96a5;--matrix-past-accent:#697586}
+[data-theme=light] .matrix{--matrix-active-background:#e7f6ee;--matrix-active-line:#50a681;--matrix-active-ink:#006b46;--matrix-active-accent:#0b9c68;--matrix-past-background:color-mix(in srgb,#94a3b8 9%,var(--card));--matrix-past-ink:#6b7482;--matrix-past-accent:#9ba4b2}
+.matrix .matrix-date-cell.is-active,.matrix .matrix-progress-cell.is-active{--activity-ink:var(--matrix-active-ink);--progress-color:var(--matrix-active-accent);background:var(--matrix-active-background);color:var(--matrix-active-ink)}
+.matrix .matrix-date-cell.is-active{box-shadow:inset 0 2px var(--matrix-active-line);border-right-color:color-mix(in srgb,var(--matrix-active-line) 25%,transparent)}
+.matrix .matrix-date-cell.is-active.module-start{box-shadow:inset 3px 0 var(--matrix-active-accent),inset 0 2px var(--matrix-active-line)}
+.matrix .matrix-date-cell.is-active.module-end{box-shadow:inset -1px 0 var(--matrix-active-line),inset 0 2px var(--matrix-active-line)}
+.matrix .matrix-date-cell.is-active[colspan="2"]{box-shadow:inset 3px 0 var(--matrix-active-accent),inset -1px 0 var(--matrix-active-line),inset 0 2px var(--matrix-active-line)}
+.matrix .matrix-progress-cell.is-active{box-shadow:inset 3px 0 var(--matrix-active-accent),inset -1px 0 var(--matrix-active-line),inset 0 -1px var(--matrix-active-line)}
+.matrix .matrix-date-cell.is-active .matrix-date{font-weight:700}
+.matrix .matrix-date-cell.is-active .matrix-date:hover,.matrix .matrix-date-cell.is-active .matrix-date:focus-visible{background:color-mix(in srgb,var(--matrix-active-accent) 10%,var(--matrix-active-background));color:var(--matrix-active-ink)}
+.matrix .is-active .matrix-current-label,.matrix .is-active .matrix-milestone-status{color:var(--matrix-active-ink);font-weight:700}
+.matrix-status-dot{display:inline-block;width:7px;height:7px;flex-shrink:0;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px color-mix(in srgb,currentColor 12%,transparent);vertical-align:middle}
+.matrix-milestone-status .matrix-status-dot{margin-right:8px}
+.matrix .is-active .matrix-progress-value{background:color-mix(in srgb,var(--matrix-active-accent) 13%,var(--matrix-active-background));color:var(--matrix-active-ink)}
+.matrix .is-active .matrix-progress-track{background:color-mix(in srgb,var(--matrix-active-accent) 16%,var(--card));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--matrix-active-line) 25%,transparent)}
+.matrix .is-active .matrix-progress-track [data-slot=progress-indicator]{background:linear-gradient(90deg,color-mix(in srgb,var(--matrix-active-accent) 70%,var(--card)),var(--matrix-active-accent))}
+.matrix .is-active .matrix-progress-caption{color:var(--matrix-active-ink);font-weight:600}
+.matrix .matrix-date-cell.is-past,.matrix .matrix-progress-cell.is-past{--activity-ink:var(--matrix-past-ink);--progress-color:var(--matrix-past-accent);background:var(--matrix-past-background);color:var(--matrix-past-ink);box-shadow:none}
+.matrix .matrix-date-cell.is-past .matrix-date{color:var(--matrix-past-ink);font-weight:450;opacity:.85}
+.matrix .matrix-date-cell.is-past .matrix-date:hover,.matrix .matrix-date-cell.is-past .matrix-date:focus-visible{background:color-mix(in srgb,#94a3b8 13%,var(--card));color:var(--foreground);opacity:1}
+.matrix .is-past .matrix-window-progress{opacity:.82}
+.matrix .is-past .matrix-progress-heading>span:first-child,.matrix .is-past .matrix-progress-caption,.matrix .is-past .matrix-milestone-status{color:var(--matrix-past-ink)}
+.matrix .is-past .matrix-progress-value{background:color-mix(in srgb,#94a3b8 12%,var(--card));color:var(--matrix-past-ink);font-weight:500}
+.matrix .is-past .matrix-progress-track{background:color-mix(in srgb,#94a3b8 12%,var(--card));box-shadow:none}
+.matrix .is-past .matrix-progress-track [data-slot=progress-indicator]{background:var(--matrix-past-accent);opacity:.55}
+.matrix .is-past .matrix-milestone-track{background:linear-gradient(90deg,transparent,var(--matrix-past-accent) 50%,transparent)}
+.matrix .is-past .matrix-milestone-track i{background:var(--matrix-past-accent);border-color:var(--matrix-past-accent)}

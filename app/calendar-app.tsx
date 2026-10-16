@@ -244,12 +244,12 @@ function MatrixActivity({title,events}:{title:string;events:CalendarEvent[]}){
   </div>;
 }
 
-function MatrixProgress({event,today}:{event:CalendarEvent;today:string}){
+function MatrixProgress({event,today,showStatus=false}:{event:CalendarEvent;today:string;showStatus?:boolean}){
   const progress=deadlineProgress(event,today);
   const state=!today?"loading":today<event.start?"upcoming":today>event.end?"past":"current";
   const detail=progress.single?`${progress.label?`${progress.label}. `:""}${br(event.start)}.`:`${progress.value}% do prazo decorrido. ${progress.label}.`;
   return <div className={`matrix-window-progress ${progress.single?"single-date":""}`} data-state={state} style={{"--elapsed":`${progress.value}%`} as CSSProperties} title={today?`${detail} Referência: ${br(today)}.`:"Carregando data de referência"}>
-    {progress.single?progress.label&&<div className="matrix-milestone-status">{progress.label}</div>:<div className="matrix-progress-heading"><span>Tempo decorrido</span><span className="matrix-progress-value">{today?<>{progress.value}<small>%</small></>:"—"}</span></div>}
+    {progress.single?progress.label&&<div className="matrix-milestone-status">{showStatus&&state==="current"&&<i className="matrix-status-dot" aria-hidden="true"/>}{progress.label}</div>:<div className="matrix-progress-heading"><span className={showStatus&&state==="current"?"matrix-current-label":undefined}>{showStatus&&state==="current"?<><i className="matrix-status-dot" aria-hidden="true"/>Em andamento</>:"Tempo decorrido"}</span><span className="matrix-progress-value">{today?<>{progress.value}<small>%</small></>:"—"}</span></div>}
     {progress.single?<div className="matrix-milestone-track" role="img" aria-label={detail}><i aria-hidden="true"/></div>:<>
       <div className="matrix-progress-rail">
         <Progress className="matrix-progress-track" value={today?progress.value:null} aria-label={`Tempo decorrido do prazo de ${event.title}`} aria-valuetext={today?detail:"Carregando data de referência"}/>
@@ -280,7 +280,7 @@ function MatrixGroup({category,titles,events,modules,colors,today,onEvent}:{cate
       </TableRow>
       <TableRow className="matrix-progress-row activity-tone" style={style}>{modules.map(m=>{
         const event=rowEvents.find(item=>item.module===m);
-        return <TableCell key={m} colSpan={2} style={moduleStyle(m,colors)} className={`matrix-progress-cell activity-tone module-end ${event?state(event):""}`}>{event&&<MatrixProgress event={event} today={today}/>}</TableCell>;
+        return <TableCell key={m} colSpan={2} style={moduleStyle(m,colors)} className={`matrix-progress-cell activity-tone module-end ${event?state(event):""}`}>{event&&<MatrixProgress event={event} today={today} showStatus/>}</TableCell>;
       })}</TableRow>
     </Fragment>;
   })}</>;
