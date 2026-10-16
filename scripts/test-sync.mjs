@@ -4,10 +4,22 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {syncCalendar} from './sync-calendar.mjs';
 import {calendarDataIsFresh,fetchLiveCalendar,SYNC_FRESHNESS_MS} from '../lib/calendar-client.ts';
-import {eventsForDisciplineTrack,focusForDisciplineTrack} from '../lib/discipline-tracks.ts';
+import {eventsForDisciplineTrack,focusForDisciplineTrack,toggleDisciplineTrack} from '../lib/discipline-tracks.ts';
 import {calendarMonthsForEvents} from '../lib/calendar.ts';
 
 const data=JSON.parse(await readFile('public/data/calendar.json','utf8'));
+let selection='regular';
+selection=toggleDisciplineTrack(selection,'portfolio');
+assert.equal(selection,'all','Selecionar Portfólio preserva a seleção de Regulares.');
+selection=toggleDisciplineTrack(selection,'regular');
+assert.equal(selection,'portfolio','Desmarcar Regulares mantém Portfólio selecionado.');
+selection=toggleDisciplineTrack(selection,'portfolio');
+assert.equal(selection,'none');
+assert.equal(eventsForDisciplineTrack(data.events,selection).length,0);
+selection=toggleDisciplineTrack(selection,'regular');
+assert.equal(selection,'regular');
+assert.equal(toggleDisciplineTrack('all','portfolio'),'regular');
+assert.equal(toggleDisciplineTrack('portfolio','regular'),'all');
 assert.deepEqual(data.modules,['51','52','53','54']);
 for(const module of data.modules){
   const events=data.events.filter(event=>event.module===module);

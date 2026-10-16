@@ -16,7 +16,7 @@ import {calendarDataIsFresh,fetchLiveCalendar} from "@/lib/calendar-client";
 import {activityIdentity,activityStyle} from "@/lib/activity-identity";
 import {ActivitySymbol} from "@/components/activity-symbol";
 import MethodologyOverview from "@/components/methodology-overview";
-import {DISCIPLINE_GROUPS,DISCIPLINE_TRACKS,eventsForDisciplineTrack,focusForDisciplineTrack,type DisciplineTrackId} from "@/lib/discipline-tracks";
+import {DISCIPLINE_GROUPS,eventsForDisciplineTrack,focusForDisciplineTrack,toggleDisciplineTrack,type DisciplineGroupId,type DisciplineTrackId} from "@/lib/discipline-tracks";
 import {DisciplineSymbol} from "@/components/discipline-symbol";
 import CalendarColorLegend from "@/components/calendar-color-legend";
 
@@ -41,7 +41,11 @@ export default function CalendarApp(){
   const[module,setModule]=useState<string>("all"),[category,setCategory]=useState("all"),[query,setQuery]=useState("");
   const isAnnual=module==="all",scopeLabel=isAnnual?"Todos os módulos":`Módulo ${module}`,scopeColor=isAnnual?"Geral":module;
   const[disciplineTrack,setDisciplineTrack]=useState<DisciplineTrackId>("regular");
-  const selectedTrack=DISCIPLINE_TRACKS.find(track=>track.id===disciplineTrack)!;
+  const selectedTrack=disciplineTrack==="all"
+    ?{label:"Regulares e Portfólio / Online",subtitle:"Disciplinas 1, 2 e 3"}
+    :disciplineTrack==="none"
+      ?{label:"Nenhuma disciplina selecionada",subtitle:""}
+      :DISCIPLINE_GROUPS.find(track=>track.id===disciplineTrack)!;
   const[theme,setTheme]=useState("dark"),[sync,setSync]=useState<"loading"|"live"|"offline">("loading"),[checkedAt,setCheckedAt]=useState("");
   const[busy,setBusy]=useState(false),[today,setToday]=useState("");
   const[selectedDay,setSelectedDay]=useState<string|null>(null),[selectedEvent,setSelectedEvent]=useState<CalendarEvent|null>(null),[expandedMonth,setExpandedMonth]=useState<number|null>(null);
@@ -93,8 +97,8 @@ export default function CalendarApp(){
   function selectModule(value:string){
     setModule(value);clearFilters();setSelectedDay(null);setSelectedEvent(null);setExpandedMonth(null);
   }
-  function selectDisciplineTrack(value:DisciplineTrackId){
-    setDisciplineTrack(value);clearFilters();setSelectedDay(null);setSelectedEvent(null);setExpandedMonth(null);
+  function selectDisciplineTrack(value:DisciplineGroupId){
+    setDisciplineTrack(current=>toggleDisciplineTrack(current,value));clearFilters();setSelectedDay(null);setSelectedEvent(null);setExpandedMonth(null);
   }
   function printView(){setExpandedMonth(null);setSelectedDay(null);setSelectedEvent(null);setTimeout(()=>window.print(),50);}
   function jumpMonth(month:number){setExpandedMonth(month);}
@@ -160,17 +164,18 @@ export default function CalendarApp(){
     <div id="module-content" className={`module-content ${isAnnual?"annual-scope":""}`}>
     {isAnnual&&<MethodologyOverview/>}
     <section className="discipline-selector activity-tone" style={modStyle(scopeColor)} aria-labelledby="discipline-selector-title">
-      <div className="discipline-selector-heading"><h2 id="discipline-selector-title">Qual grupo de disciplinas?</h2><span>{scopeLabel}</span></div>
-      <div className="discipline-selector-options" role="group" aria-label={`Grupos de disciplinas · ${scopeLabel}`}>{DISCIPLINE_TRACKS.map(track=>{
-        const selected=track.id===disciplineTrack;
-        return <button type="button" key={track.id} className={`discipline-option ${selected?"is-selected":""}`} aria-pressed={selected} aria-controls="discipline-content" onClick={()=>selectDisciplineTrack(track.id)}>
+      <div className="discipline-selector-heading"><h2 id="discipline-selector-title">Selecione as disciplinas</h2><span>{scopeLabel}</span></div>
+      <div className="discipline-selector-options" role="group" aria-label={`Grupos de disciplinas · ${scopeLabel}`}>{DISCIPLINE_GROUPS.map(track=>{
+        const selected=disciplineTrack==="all"||track.id===disciplineTrack;
+        return <button type="button" key={track.id} role="checkbox" className={`discipline-option ${selected?"is-selected":""}`} aria-checked={selected} aria-controls="discipline-content" onClick={()=>selectDisciplineTrack(track.id)}>
           <span className="discipline-option-icon"><DisciplineSymbol track={track.id}/></span>
           <strong className="discipline-option-title">{track.menuTitle}</strong>
           <span className="discipline-option-check" aria-hidden="true">{selected&&<Check size={13} strokeWidth={3}/>}</span>
         </button>;
       })}</div>
     </section>
-    <div id="discipline-content">
+    {disciplineTrack==="none"&&<div className="panel discipline-empty" role="status"><ListFilter size={22}/><p>Selecione um ou os dois tipos de disciplinas para consultar o calendário e os prazos.</p></div>}
+    <div id="discipline-content" hidden={disciplineTrack==="none"}>
     <section className="annual-section" aria-labelledby="annual-title">
       <div className="annual-heading"><div><span className="eyebrow">{isAnnual?"VISÃO ANUAL":scopeLabel.toUpperCase()} · METODOLOGIA {year}</span><h2 id="annual-title"><CalendarDays size={25}/>{isAnnual?"Calendário anual":"Calendário do módulo"}</h2><p className="module-calendar-description"><strong>{selectedTrack.label}</strong> · {selectedTrack.subtitle}<span className="discipline-date-range">Atividades e datas de {br(timelineStart)} a {br(timelineEnd)}.</span></p></div><div className="annual-tools">
         <TooltipProvider delayDuration={200}><Tooltip><TooltipTrigger asChild><span className={`sync-status ${sync}`} tabIndex={0} role="status" aria-live="polite" aria-atomic="true" aria-label={syncLabel}>
