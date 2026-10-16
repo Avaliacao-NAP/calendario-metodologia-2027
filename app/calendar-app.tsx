@@ -233,11 +233,11 @@ const assessmentLabel=(type:string)=>type==="DIS"?"Discursiva":type==="OBJ"?"Obj
 
 function ActivityGrade({grade}:{grade:number}){
   return <span className="activity-grade" aria-label={`Vale ${formatPoints(grade)} ${grade===1?"ponto":"pontos"}`}>
-    <span className="activity-grade-value"><strong>{formatPoints(grade)}</strong><span>pts</span></span>
+    <span className="activity-grade-value"><strong>{formatPoints(grade)}</strong></span>
   </span>;
 }
 
-function MatrixActivity({title,events}:{title:string;events:CalendarEvent[]}){
+function MatrixActivity({title,events,colors}:{title:string;events:CalendarEvent[];colors:Record<string,string>}){
   const first=events[0];
   const sameGrade=events.every(event=>event.grade===first?.grade);
   const sameType=events.every(event=>event.assessmentType===first?.assessmentType);
@@ -248,7 +248,7 @@ function MatrixActivity({title,events}:{title:string;events:CalendarEvent[]}){
       {sameType&&first?.assessmentType&&<span className="activity-type">{assessmentLabel(first.assessmentType)}</span>}
     </div></div>
     {!varies&&typeof first?.grade==="number"&&<ActivityGrade grade={first.grade}/>}
-    {varies&&hasGrade&&<div className="activity-module-grades">{events.map(event=><div key={event.id} className="activity-module-grade">
+    {varies&&hasGrade&&<div className="activity-module-grades">{events.map(event=><div key={event.id} className="activity-module-grade" style={moduleStyle(event.module,colors)}>
       <div><span>Módulo {event.module}</span>{!sameType&&event.assessmentType&&<small>{assessmentLabel(event.assessmentType)}</small>}</div>
       {typeof event.grade==="number"?<ActivityGrade grade={event.grade}/>:<span className="quiet">Nota não informada</span>}
     </div>)}</div>}
@@ -282,7 +282,7 @@ function MatrixGroup({category,titles,events,modules,colors,today,onEvent,showCa
     const state=(event:CalendarEvent)=>!today?"":status(event,today)==="Em andamento"?"is-active":status(event,today)==="Prazo encerrado"?"is-past":"";
     return <Fragment key={title}>
       <TableRow className="matrix-activity-row activity-tone" style={style}>
-        <TableCell className="activity-col" rowSpan={2}><MatrixActivity title={title} events={rowEvents}/></TableCell>
+        <TableCell className="activity-col" rowSpan={2}><MatrixActivity title={title} events={rowEvents} colors={colors}/></TableCell>
         {modules.flatMap(m=>{
           const event=rowEvents.find(item=>item.module===m);
           if(event&&event.start===event.end)return [<TableCell key={`${m}-single-date`} colSpan={2} style={moduleStyle(m,colors)} className={`matrix-date-cell activity-tone module-end ${state(event)}`}><button className="matrix-date" onClick={()=>onEvent(event)} aria-label={`Início e término: ${br(event.start)}. ${event.title}, módulo ${m}`}><time dateTime={event.start}>{br(event.start)}</time></button></TableCell>];

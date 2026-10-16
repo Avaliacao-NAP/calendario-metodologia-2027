@@ -204,24 +204,22 @@
 .sync-status{width:34px;height:34px;padding:8px;border-radius:50%}
 .past-day:not(.today){opacity:.28;transition:opacity .15s}
 .past-day:hover,.past-day:focus-visible{opacity:1}
+.matrix{--activity-grade-size:42px}
 .matrix-activity-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.matrix-activity-heading>span:last-child{width:52px;text-align:right}
+.matrix-activity-heading>span:last-child{width:var(--activity-grade-size);flex-shrink:0;text-align:center}
 .matrix-activity-summary{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px 16px;min-height:56px}
 .matrix-activity-main{min-width:0}
 .activity-name{font-weight:550;display:block;white-space:normal;font-size:14px;line-height:1.45;overflow-wrap:anywhere}
 .activity-type{display:block;margin-top:6px;color:var(--muted-foreground);font-size:12px;font-weight:400;line-height:1.4}
-.activity-grade{display:inline-flex;align-items:center;justify-content:flex-end;min-width:52px;color:var(--muted-foreground);white-space:nowrap;line-height:1.3}
-.activity-grade-value{display:flex;align-items:baseline;gap:4px}
-.activity-grade-value strong{font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
-.activity-grade-value>span{font-size:11px;font-weight:500;letter-spacing:0}
+.activity-grade{display:inline-grid;place-items:center;width:var(--activity-grade-size);min-width:var(--activity-grade-size);height:var(--activity-grade-size);flex-shrink:0;border:1px solid color-mix(in srgb,var(--module-color) 82%,var(--module-contrast) 18%);border-radius:9px;background:var(--module-color);color:var(--module-contrast);white-space:nowrap;line-height:1}
+.activity-grade-value{display:flex;align-items:center;justify-content:center}
+.activity-grade-value strong{font-size:16px;font-weight:650;font-variant-numeric:tabular-nums}
 .matrix-category-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px 24px}
 .activity-module-grades{grid-column:1/-1;display:grid;gap:8px;border-top:1px solid var(--border);padding-top:10px}
 .activity-module-grade{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px}
 .activity-module-grade>div{display:flex;flex-direction:column;gap:3px;color:var(--muted-foreground)}
 .activity-module-grade small{font-size:11px}
-.activity-module-grade .activity-grade{min-width:52px}
-.activity-module-grade .activity-grade-value strong{font-size:13px}
-@media(max-width:760px){.matrix{--matrix-activity-width:290px;--matrix-module-width:224px}.matrix .activity-col{padding:12px 14px}.matrix-activity-summary{gap:10px}.activity-grade{min-width:48px}.matrix-activity-heading>span:last-child{width:48px}.matrix-category-heading{gap:6px 18px}}
+@media(max-width:760px){.matrix{--matrix-activity-width:290px;--matrix-module-width:224px;--activity-grade-size:40px}.matrix .activity-col{padding:12px 14px}.matrix-activity-summary{gap:10px}.matrix-category-heading{gap:6px 18px}}
 .assessment-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--border);border-radius:10px;margin:0}
 .assessment-summary>div{padding:15px 10px;min-width:0}
 .assessment-summary>div+div{border-left:1px solid var(--border)}
@@ -490,7 +488,7 @@
 @media print{.calendar-color-legend{break-inside:avoid;padding:10px 12px;margin-bottom:14px}.calendar-color-legend h3{font-size:10px;margin-bottom:9px}.calendar-legend-groups.has-exams{grid-template-columns:1fr 1fr 1fr;gap:12px}.calendar-legend-group h4{font-size:9px;margin-bottom:6px}.calendar-legend-group li{font-size:8px}.calendar-legend-group ul{gap:5px 10px}.calendar-legend-swatch{width:8px;height:8px;flex-basis:8px}.calendar-legend-group+ .calendar-legend-group{padding-left:12px}}
 
 /* Matriz individual: leitura ampla, com proporção entre atividade, datas e prazo. */
-.matrix.module-matrix{--matrix-activity-width:clamp(360px,40vw,540px);--matrix-module-width:340px;font-size:17px}
+.matrix.module-matrix{--matrix-activity-width:clamp(360px,40vw,540px);--matrix-module-width:340px;--activity-grade-size:48px;font-size:17px}
 .matrix.module-matrix .matrix-module-header{font-size:20px;letter-spacing:.01em;height:54px}
 .matrix.module-matrix th.activity-col{font-size:14px;letter-spacing:.035em}
 .matrix.module-matrix .matrix-date-row th{font-size:14px;height:43px;letter-spacing:.025em}
@@ -501,10 +499,7 @@
 .matrix.module-matrix .activity-symbol svg{width:21px;height:21px}
 .matrix.module-matrix .activity-name{font-size:18px;font-weight:600;line-height:1.45;letter-spacing:-.015em;overflow-wrap:break-word}
 .matrix.module-matrix .activity-type{font-size:13px;line-height:1.4;margin-top:5px}
-.matrix.module-matrix .activity-grade{min-width:58px}
-.matrix.module-matrix .activity-grade-value strong{font-size:16px;font-weight:500}
-.matrix.module-matrix .activity-grade-value>span{font-size:12px}
-.matrix.module-matrix .matrix-activity-heading>span:last-child{width:58px}
+.matrix.module-matrix .activity-grade-value strong{font-size:18px}
 .matrix.module-matrix .category-row td{padding:11px 22px}
 .matrix.module-matrix .category-row strong{font-size:14px;letter-spacing:.02em}
 .matrix.module-matrix .matrix-date{font-size:20px;font-weight:550;line-height:1.4;min-height:44px;padding:10px 10px 5px;letter-spacing:-.02em}
@@ -518,7 +513,7 @@
 .matrix.module-matrix .matrix-milestone-status{font-size:13px}
 .module-content:not(.annual-scope) .matrix-caption{font-size:13px}
 @media(max-width:900px){.matrix.module-matrix{--matrix-activity-width:330px;--matrix-module-width:300px}.matrix.module-matrix .activity-col{padding:13px 17px}.matrix.module-matrix .activity-name{font-size:17px}.matrix.module-matrix .matrix-date{font-size:18px}.matrix.module-matrix .matrix-progress-cell{padding:0 18px 12px}}
-@media(max-width:600px){.matrix.module-matrix{--matrix-activity-width:290px;--matrix-module-width:280px}.matrix.module-matrix .matrix-module-header{font-size:18px}.matrix.module-matrix .activity-col{padding:12px 15px}.matrix.module-matrix .matrix-activity-summary{gap:12px}.matrix.module-matrix .matrix-activity-main{gap:10px}.matrix.module-matrix .activity-name{font-size:16px}.matrix.module-matrix .activity-symbol{flex-basis:32px;width:32px;height:32px}.matrix.module-matrix .activity-symbol svg{width:19px;height:19px}.matrix.module-matrix .matrix-date{font-size:17px}.matrix.module-matrix .matrix-progress-heading>span:first-child,.matrix.module-matrix .matrix-progress-caption,.matrix.module-matrix .matrix-milestone-status{font-size:12px}.matrix.module-matrix .matrix-progress-value{font-size:16px}}
+@media(max-width:600px){.matrix.module-matrix{--matrix-activity-width:290px;--matrix-module-width:280px;--activity-grade-size:44px}.matrix.module-matrix .matrix-module-header{font-size:18px}.matrix.module-matrix .activity-col{padding:12px 15px}.matrix.module-matrix .matrix-activity-summary{gap:12px}.matrix.module-matrix .matrix-activity-main{gap:10px}.matrix.module-matrix .activity-name{font-size:16px}.matrix.module-matrix .activity-symbol{flex-basis:32px;width:32px;height:32px}.matrix.module-matrix .activity-symbol svg{width:19px;height:19px}.matrix.module-matrix .matrix-date{font-size:17px}.matrix.module-matrix .matrix-progress-heading>span:first-child,.matrix.module-matrix .matrix-progress-caption,.matrix.module-matrix .matrix-milestone-status{font-size:12px}.matrix.module-matrix .matrix-progress-value{font-size:16px}}
 
 .matrix-window-progress.single-date .matrix-milestone-status{display:block;text-align:center;margin-bottom:9px}
 
