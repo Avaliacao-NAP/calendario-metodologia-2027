@@ -4,7 +4,8 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {syncCalendar} from './sync-calendar.mjs';
 import {calendarDataIsFresh,fetchLiveCalendar,SYNC_FRESHNESS_MS} from '../lib/calendar-client.ts';
-import {eventsForDisciplineTrack} from '../lib/discipline-tracks.ts';
+import {eventsForDisciplineTrack,focusForDisciplineTrack} from '../lib/discipline-tracks.ts';
+import {calendarMonthsForEvents} from '../lib/calendar.ts';
 
 const data=JSON.parse(await readFile('public/data/calendar.json','utf8'));
 assert.deepEqual(data.modules,['51','52','53','54']);
@@ -13,7 +14,13 @@ for(const module of data.modules){
   assert.equal(events.length,17,`Módulo ${module}: 16 atividades/datas e um período.`);
   assert.equal(eventsForDisciplineTrack(events,'regular').length,13);
   assert.equal(eventsForDisciplineTrack(events,'portfolio').length,4);
+  const combined=eventsForDisciplineTrack(events,'all');
+  assert.deepEqual(combined.map(event=>event.id).sort(),events.map(event=>event.id).sort(),'A seleção conjunta mantém todas as datas, sem duplicar.');
+  assert.equal(focusForDisciplineTrack(combined,'all')?.kind,'period','O foco da seleção conjunta acompanha o período regular do módulo.');
 }
+const allEvents=eventsForDisciplineTrack(data.events,'all');
+assert.equal(calendarMonthsForEvents(allEvents,data.academicYear).at(-1).key,'2028-02','A visão conjunta inclui também as últimas notas de Portfólio / Online.');
+assert.equal(eventsForDisciplineTrack(allEvents.filter(event=>event.category==='Notas e gabaritos'),'portfolio').length,8,'As notas de Portfólio / Online mantêm sua separação.');
 assert.ok(data.events.some(event=>event.module==='54'&&event.group==='Disciplina 3'&&event.start==='2028-02-04'));
 const originalFetch=globalThis.fetch, directory=await mkdtemp(join(tmpdir(),'methodology-sync-'));
 try{
@@ -31,7 +38,7 @@ try{
   globalThis.fetch=async()=>new Response('Unavailable',{status:503});
   await assert.rejects(syncCalendar(destination),/503/);
   assert.equal((JSON.parse(await readFile(destination,'utf8'))).version,data.version);
-  console.log('OK: quatro módulos, disciplinas separadas, prazos de 2028, dados antigos sinalizados e última leitura preservada em falhas.');
+  console.log('OK: quatro módulos, seleção individual e conjunta de disciplinas, prazos de 2028, dados antigos sinalizados e última leitura preservada em falhas.');
 }finally{
   globalThis.fetch=originalFetch;
   await rm(directory,{recursive:true,force:true});

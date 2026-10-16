@@ -16,7 +16,7 @@ import {calendarDataIsFresh,fetchLiveCalendar} from "@/lib/calendar-client";
 import {activityIdentity,activityStyle} from "@/lib/activity-identity";
 import {ActivitySymbol} from "@/components/activity-symbol";
 import MethodologyOverview from "@/components/methodology-overview";
-import {DISCIPLINE_TRACKS,eventsForDisciplineTrack,focusForDisciplineTrack,type DisciplineTrackId} from "@/lib/discipline-tracks";
+import {DISCIPLINE_GROUPS,DISCIPLINE_TRACKS,eventsForDisciplineTrack,focusForDisciplineTrack,type DisciplineTrackId} from "@/lib/discipline-tracks";
 import {DisciplineSymbol} from "@/components/discipline-symbol";
 import CalendarColorLegend from "@/components/calendar-color-legend";
 
@@ -82,7 +82,10 @@ export default function CalendarApp(){
   const focusState=focusPeriod&&today?status(focusPeriod,today):"Previsto";
   const focusRemaining=focusPeriod&&today?daysBetween(today,focusState==="Previsto"?focusPeriod.start:focusPeriod.end):0;
   const nextEvents=today?upcomingEvents(filtered,today):[];
-  const groups=Array.from(new Set(filtered.map(e=>e.title)));
+  const trackSections=useMemo(()=>DISCIPLINE_GROUPS
+    .filter(track=>disciplineTrack==="all"||track.id===disciplineTrack)
+    .map(track=>({track,events:eventsForDisciplineTrack(filtered,track.id).filter(event=>event.kind!=="period")}))
+    .filter(section=>section.events.length),[filtered,disciplineTrack]);
   const activeFilters=category!=="all"||!!query;
   const syncLabel=sync==="live"?"Sincronizado":sync==="offline"?"Desconectado":"Conectando";
   const syncDetail=sync==="live"?`Última sincronização às ${timeBR(checkedAt)} (Brasília).`:sync==="offline"?`Atualização pendente.${checkedAt?` Última leitura: ${br(checkedAt.slice(0,10))} às ${timeBR(checkedAt)} (Brasília).`:""}`:"Verificando a conexão.";
@@ -175,7 +178,7 @@ export default function CalendarApp(){
         </span></TooltipTrigger><TooltipContent side="bottom" sideOffset={8} className="sync-tooltip">{syncDetail}</TooltipContent></Tooltip></TooltipProvider>
         <button className="icon-btn" disabled={busy} onClick={()=>void refresh()} aria-label="Atualizar agora"><RefreshCw size={17} className={busy?"spin":""}/></button>
       </div></div>
-      <div className="calendar-controls module-content-filters"><div className="search-box"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} aria-label={`Buscar atividade em ${selectedTrack.label} · ${scopeLabel}`} placeholder="Buscar neste grupo de disciplinas..."/>{query&&<button onClick={()=>setQuery("")} aria-label="Limpar busca"><X size={16}/></button>}</div><Choice label="Categoria de atividades" value={category} onChange={setCategory} options={[{value:"all",label:"Todas as categorias"},...CATEGORIES.filter(c=>trackEvents.some(event=>event.category===c)).map(c=>({value:c,label:c}))]}/></div>
+      <div className="calendar-controls module-content-filters"><div className="search-box"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} aria-label={`Buscar atividade em ${selectedTrack.label} · ${scopeLabel}`} placeholder={disciplineTrack==="all"?"Buscar em todas as disciplinas...":"Buscar neste grupo de disciplinas..."}/>{query&&<button onClick={()=>setQuery("")} aria-label="Limpar busca"><X size={16}/></button>}</div><Choice label="Categoria de atividades" value={category} onChange={setCategory} options={[{value:"all",label:"Todas as categorias"},...CATEGORIES.filter(c=>trackEvents.some(event=>event.category===c)).map(c=>({value:c,label:c}))]}/></div>
       <div className="calendar-meta"><p>Clique em um dia para consultar os prazos ou amplie um mês.</p><span>{filtered.filter(e=>e.kind!=="period").length} atividades e datas{activeFilters&&<button className="text-button" onClick={clearFilters}>Limpar filtros</button>}</span></div>
       <div className={`annual-grid module-calendar-grid ${isAnnual?"annual-calendar-grid":""}`}>{moduleMonths.map(({year:monthYear,month,key},index)=>{
         const name=MONTHS[month],activities=filtered.filter(e=>e.kind!=="period"&&intersects(e,`${key}-01`,`${key}-31`));
@@ -186,25 +189,28 @@ export default function CalendarApp(){
 
     <section className="overview" aria-label={`Acompanhamento de ${selectedTrack.label} · ${scopeLabel}`}><div className="panel module-overview"><div className="section-heading"><h2><GraduationCap size={20}/>Módulo em foco</h2><span className="quiet">{br(today)}</span></div><div className="module-cards">{focusPeriod?
       <article className="period-card module-focus activity-tone" style={modStyle(focusPeriod.module)} aria-label={`${selectedTrack.label}, módulo ${focusPeriod.module}: ${focusState}`}>
-        <div className="focus-heading"><div className="focus-module-title"><strong>Módulo {focusPeriod.module}</strong><span>{disciplineTrack==="regular"?"Disciplinas regulares":"Portfólio / Online · Período do MAPA"}</span></div><span className={`focus-status ${focusState==="Em andamento"?"active":"inactive"}`}><i/>{focusState}</span></div>
+        <div className="focus-heading"><div className="focus-module-title"><strong>Módulo {focusPeriod.module}</strong><span>{disciplineTrack==="portfolio"?"Portfólio / Online · Período do MAPA":"Disciplinas regulares"}</span></div><span className={`focus-status ${focusState==="Em andamento"?"active":"inactive"}`}><i/>{focusState}</span></div>
         <MatrixProgress event={focusPeriod} today={today}/>
         <dl className="focus-dates"><div><dt>Início</dt><dd>{br(focusPeriod.start)}</dd></div><div><dt>Término</dt><dd>{br(focusPeriod.end)}</dd></div><div><dt>{focusState==="Previsto"?"Começa em":focusState==="Prazo encerrado"?"Situação":"Restam"}</dt><dd className="focus-remaining">{!today?"—":focusState==="Prazo encerrado"?"Encerrado":focusRemaining===0?"Termina hoje":`${focusRemaining} ${focusRemaining===1?"dia":"dias"}`}</dd></div></dl>
       </article>:<div className="focus-empty" role="status"><CalendarRange size={32}/><strong>Período não informado</strong><p>Consulte as datas das atividades em {scopeLabel.toLowerCase()}.</p></div>
-    }</div><p className="panel-note">{disciplineTrack==="regular"?"Do início das atividades regulares ao término da prova presencial.":"Período de entrega do MAPA. Consulte o MAPA substitutivo e as liberações de notas nos prazos abaixo."}</p></div><div className="panel deadlines"><div className="section-heading"><h2 id="deadlines-title"><Clock3 size={23}/>Próximos prazos</h2></div><div className="deadline-list" role="region" aria-labelledby="deadlines-title" tabIndex={0}>{nextEvents.length?nextEvents.map(e=>{
+    }</div><p className="panel-note">{disciplineTrack==="portfolio"?"Período de entrega do MAPA. Consulte o MAPA substitutivo e as liberações de notas nos prazos abaixo.":"Do início das atividades regulares ao término da prova presencial."}{disciplineTrack==="all"&&" Os prazos de Portfólio / Online também estão incluídos no calendário e nas atividades abaixo."}</p></div><div className="panel deadlines"><div className="section-heading"><h2 id="deadlines-title"><Clock3 size={23}/>Próximos prazos</h2></div><div className="deadline-list" role="region" aria-labelledby="deadlines-title" tabIndex={0}>{nextEvents.length?nextEvents.map(e=>{
       const days=today?daysBetween(today,e.target):0,starting=e.target===e.start;
       return <button className="deadline activity-tone" style={activityStyle(e,data.moduleColors)} key={e.id} onClick={()=>setSelectedEvent(e)}>
         <ActivitySymbol event={e}/>
-        <span className="deadline-main"><strong>{e.title}</strong><span className="deadline-count">{days===0?`${starting?"Começa":"Termina"} hoje`:`${starting?"Começa":"Termina"} em ${days} ${days===1?"dia":"dias"}`}</span></span>
+        <span className="deadline-main"><strong>{e.title}</strong>{disciplineTrack==="all"&&<span className="deadline-discipline">{e.group==="Disciplina 3"?"Portfólio / Online":"Regulares"}</span>}<span className="deadline-count">{days===0?`${starting?"Começa":"Termina"} hoje`:`${starting?"Começa":"Termina"} em ${days} ${days===1?"dia":"dias"}`}</span></span>
         <span className="deadline-meta"><span className="deadline-module">{eventLabel(e)}</span><span className="deadline-date">{starting?"Início":"Fim"} em <time dateTime={e.target}>{br(e.target)}</time></span></span>
       </button>;
     }):<p className="empty-inline">Nenhum prazo futuro para os filtros selecionados.</p>}</div></div></section>
 
     <section className="details-section" aria-labelledby="details-title"><Tabs value={view} onValueChange={setView}><div className="detail-heading"><div><span className="eyebrow">{isAnnual?"VISÃO ANUAL":scopeLabel.toUpperCase()} · {selectedTrack.label}</span><h2 id="details-title">Atividades e prazos</h2></div><TabsList className="view-tabs"><TabsTrigger value="matrix"><LayoutGrid size={16}/>Matriz geral</TabsTrigger><TabsTrigger value="gantt"><ChartNoAxesGantt size={17}/>Cronograma</TabsTrigger></TabsList></div>
-      <TabsContent value="matrix"><div className="panel matrix-panel"><div className="matrix-caption"><span><ListFilter size={16}/>{activeFilters?`${selectedTrack.subtitle} · Filtros aplicados`:`${selectedTrack.label} · ${selectedTrack.subtitle}`}</span><span>Barras indicam o tempo decorrido do prazo</span></div><Table className={`matrix ${isAnnual?"annual-matrix":"module-matrix"}`} containerLabel={`Matriz de atividades · ${selectedTrack.label} · ${scopeLabel}`} style={{...modStyle(scopeColor),minWidth:`calc(var(--matrix-activity-width) + ${visibleModules.length} * var(--matrix-module-width))`}}><TableHeader><TableRow className="matrix-module-row"><TableHead className="activity-col" rowSpan={2} scope="col"><span className="matrix-activity-heading"><span>Atividade</span><span>Nota</span></span></TableHead>{visibleModules.map(m=><TableHead key={m} colSpan={2} scope="colgroup" className={`matrix-module-header module-${m}`} style={modStyle(m)}>Módulo {m}</TableHead>)}</TableRow><TableRow className="matrix-date-row">{visibleModules.flatMap(m=>[<TableHead key={`${m}-start`} scope="col" className="module-start">Início</TableHead>,<TableHead key={`${m}-end`} scope="col" className="module-end">Término</TableHead>])}</TableRow></TableHeader><TableBody>{CATEGORIES.map(cat=>{
-        const titles=groups.filter(title=>filtered.some(e=>e.title===title&&e.category===cat));if(!titles.length)return null;
-        return <MatrixGroup key={cat} category={cat} titles={titles} events={filtered} modules={visibleModules} colors={data.moduleColors} today={today} onEvent={setSelectedEvent}/>;
-      })}{!filtered.length&&<TableRow><TableCell colSpan={visibleModules.length*2+1}><div className="empty-inline">Nenhuma atividade na tabela para estes filtros.{category==="Feriados e pontes"&&" Consulte as datas destacadas no calendário anual."}</div></TableCell></TableRow>}</TableBody></Table></div></TabsContent>
-      <TabsContent value="gantt"><AcademicGantt events={filtered.filter(e=>e.kind!=="period")} year={year} startDate={timelineStart} endDate={timelineEnd} colors={data.moduleColors} module={module} disciplineLabel={selectedTrack.label} today={today} onEvent={setSelectedEvent}/></TabsContent>
+      <TabsContent value="matrix"><div className="panel matrix-panel"><div className="matrix-caption"><span><ListFilter size={16}/>{activeFilters?`${selectedTrack.subtitle} · Filtros aplicados`:`${selectedTrack.label} · ${selectedTrack.subtitle}`}</span><span>Barras indicam o tempo decorrido do prazo</span></div><Table className={`matrix ${isAnnual?"annual-matrix":"module-matrix"}`} containerLabel={`Matriz de atividades · ${selectedTrack.label} · ${scopeLabel}`} style={{...modStyle(scopeColor),minWidth:`calc(var(--matrix-activity-width) + ${visibleModules.length} * var(--matrix-module-width))`}}><TableHeader><TableRow className="matrix-module-row"><TableHead className="activity-col" rowSpan={2} scope="col"><span className="matrix-activity-heading"><span>Atividade</span><span>Nota</span></span></TableHead>{visibleModules.map(m=><TableHead key={m} colSpan={2} scope="colgroup" className={`matrix-module-header module-${m}`} style={modStyle(m)}>Módulo {m}</TableHead>)}</TableRow><TableRow className="matrix-date-row">{visibleModules.flatMap(m=>[<TableHead key={`${m}-start`} scope="col" className="module-start">Início</TableHead>,<TableHead key={`${m}-end`} scope="col" className="module-end">Término</TableHead>])}</TableRow></TableHeader><TableBody>{trackSections.map(({track,events})=><Fragment key={track.id}>
+        {disciplineTrack==="all"&&<TableRow className="matrix-discipline-row activity-tone"><TableCell colSpan={visibleModules.length*2+1}><div className="discipline-section-heading"><DisciplineSymbol track={track.id}/><strong>{track.menuTitle}</strong></div></TableCell></TableRow>}
+        {CATEGORIES.map(cat=>{
+          const titles=Array.from(new Set(events.filter(event=>event.category===cat).map(event=>event.title)));if(!titles.length)return null;
+          return <MatrixGroup key={cat} category={cat} titles={titles} events={events} modules={visibleModules} colors={data.moduleColors} today={today} onEvent={setSelectedEvent} showCategory={disciplineTrack!=="all"||cat!==track.sourceGroup}/>;
+        })}
+      </Fragment>)}{!trackSections.length&&<TableRow><TableCell colSpan={visibleModules.length*2+1}><div className="empty-inline">Nenhuma atividade na tabela para estes filtros.{category==="Feriados e pontes"&&" Consulte as datas destacadas no calendário anual."}</div></TableCell></TableRow>}</TableBody></Table></div></TabsContent>
+      <TabsContent value="gantt"><AcademicGantt events={filtered.filter(e=>e.kind!=="period")} year={year} startDate={timelineStart} endDate={timelineEnd} colors={data.moduleColors} module={module} disciplineLabel={selectedTrack.label} separateTracks={disciplineTrack==="all"} today={today} onEvent={setSelectedEvent}/></TabsContent>
     </Tabs></section>
     </div>
     </div>
@@ -261,11 +267,11 @@ function MatrixProgress({event,today,showStatus=false}:{event:CalendarEvent;toda
   </div>;
 }
 
-function MatrixGroup({category,titles,events,modules,colors,today,onEvent}:{category:string;titles:string[];events:CalendarEvent[];modules:string[];colors:Record<string,string>;today:string;onEvent:(e:CalendarEvent)=>void}){
+function MatrixGroup({category,titles,events,modules,colors,today,onEvent,showCategory=true}:{category:string;titles:string[];events:CalendarEvent[];modules:string[];colors:Record<string,string>;today:string;onEvent:(e:CalendarEvent)=>void;showCategory?:boolean}){
   const categoryEvents=events.filter(event=>event.category===category&&modules.includes(event.module));
-  return <><TableRow className="category-row"><TableCell colSpan={modules.length*2+1}><div className="matrix-category-heading">
+  return <>{showCategory&&<TableRow className="category-row"><TableCell colSpan={modules.length*2+1}><div className="matrix-category-heading">
     <strong>{category}</strong>
-  </div></TableCell></TableRow>{titles.map(title=>{
+  </div></TableCell></TableRow>}{titles.map(title=>{
     const rowEvents=categoryEvents.filter(event=>event.title===title);
     const style=modules.length>1?moduleStyle("Geral",colors):rowEvents[0]?activityStyle(rowEvents[0],colors):undefined;
     const state=(event:CalendarEvent)=>!today?"":status(event,today)==="Em andamento"?"is-active":status(event,today)==="Prazo encerrado"?"is-past":"";

@@ -4,6 +4,7 @@ import {join} from 'node:path';
 const base=process.env.NEXT_PUBLIC_BASE_PATH??'/calendario-metodologia-2027';
 const html=await readFile('out/index.html','utf8');
 assert.match(html,/Calendário anual/);
+assert.match(html,/Todas as disciplinas/);
 assert.match(html,/Disciplinas Regulares - 1 e 2/);
 assert.match(html,/Disciplinas Portifólio \/ Online - 3/);
 assert.match(html,/Manrope|Modelo da metodologia|Metodologia/);
