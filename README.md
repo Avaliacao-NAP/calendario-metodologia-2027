@@ -11,11 +11,11 @@ A fonte é o mesmo arquivo público de planilha utilizado pelo calendário acad�
 - O GitHub Actions consulta a planilha a cada 5 minutos. Execuções agendadas podem sofrer atrasos do GitHub.
 - A leitura validada é publicada em `data/calendar.json`. O navegador verifica esse arquivo a cada 20 segundos enquanto a página está visível e ao retornar à aba.
 - Leituras com mais de 15 minutos são indicadas como atualização pendente. O último conjunto válido continua disponível.
-- Uma falha na consulta ou mudança inesperada na estrutura da planilha interrompe a publicação e preserva a versão anterior.
-- A interface compilada é reutilizada quando o código permanece igual. Os dados são renovados em cada publicação.
+- A leitura localiza os cabeçalhos e grupos de disciplinas, aceitando linhas/colunas deslocadas e atividades adicionadas ou retiradas. Datas, notas e totais são validados; uma leitura incompleta preserva a versão anterior.
+- A interface compilada é reutilizada quando o código e o conteúdo da planilha permanecem iguais. Uma mudança nos dados renova também o HTML inicial e o modelo de metodologia. Cada publicação verifica a versão disponível no endereço público.
 - Os prazos e as barras usam a data real de Brasília. Não há simulação de datas.
 
-O modelo geral de metodologia aparece somente na visão Anual. As fontes Manrope e os logotipos são distribuídos junto com o site; a licença da fonte está em `public/fonts/Manrope-OFL.txt`.
+O modelo geral de metodologia aparece somente na visão Anual e deriva suas atividades, notas e semanas das datas do primeiro módulo da planilha. As fontes Manrope e os logotipos são distribuídos junto com o site; a licença da fonte está em `public/fonts/Manrope-OFL.txt`.
 
 ## Publicação
 

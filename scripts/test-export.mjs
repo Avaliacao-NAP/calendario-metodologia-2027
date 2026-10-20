@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import {readFile,access} from 'node:fs/promises';
 import {join} from 'node:path';
+import {calendarMonthsForEvents} from '../lib/calendar.ts';
+import {eventsForDisciplineTrack} from '../lib/discipline-tracks.ts';
+const data=JSON.parse(await readFile('out/data/calendar.json','utf8'));
+const source=JSON.parse(await readFile('public/data/calendar.json','utf8'));
+assert.deepEqual(data,source,'Os dados publicados devem corresponder à leitura validada da planilha.');
+const months=calendarMonthsForEvents(eventsForDisciplineTrack(data.events,'regular'),data.academicYear).length;
 const base=process.env.NEXT_PUBLIC_BASE_PATH??'/calendario-metodologia-2027';
 const html=await readFile('out/index.html','utf8');
 assert.match(html,/Calendário anual/);
@@ -11,7 +17,7 @@ disciplineOptions.forEach(button=>assert.match(button,/role="checkbox"/));
 assert.match(html,/Disciplinas Regulares - 1 e 2/);
 assert.match(html,/Disciplinas Portifólio \/ Online - 3/);
 assert.match(html,/Manrope|Modelo da metodologia|Metodologia/);
-assert.equal((html.match(/class="month-card/g)||[]).length,13,'Anual regular: 2027 completo e janeiro de 2028.');
+assert.equal((html.match(/class="month-card/g)||[]).length,months,'O calendário inicial cobre as datas regulares atualizadas.');
 assert.match(html,/Módulo 54/);
 assert.doesNotMatch(html,/Simular outra data|Simulação ativa|Data única/);
 const resources=[...html.matchAll(/<(?:script|link|img)\b[^>]*(?:src|href)="([^"]+)"/g)].map(match=>match[1]).filter(value=>value.startsWith('/'));
@@ -36,6 +42,5 @@ for(const resource of resources){
 }
 assert.ok(fonts>=2,'As duas variantes locais da Manrope devem estar acessíveis.');
 await access('out/.nojekyll');
-const data=JSON.parse(await readFile('out/data/calendar.json','utf8'));
-assert.equal(data.events.length,68);
-console.log(`OK: exportação estática com 13 meses, ${resources.length} recursos, fontes locais, 68 atividades/períodos e caminhos corretos em ${base}.`);
+assert.ok(data.events.length>0);
+console.log(`OK: exportação estática com ${months} meses, ${resources.length} recursos, fontes locais, ${data.events.length} atividades/períodos e caminhos corretos em ${base}.`);

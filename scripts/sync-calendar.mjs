@@ -1,4 +1,4 @@
-import {mkdir,rename,writeFile} from "node:fs/promises";
+import {appendFile,mkdir,rename,writeFile} from "node:fs/promises";
 import {dirname,resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {fetchCalendar} from "../lib/calendar-source.ts";
@@ -15,5 +15,6 @@ export async function syncCalendar(destination=resolve("public/data/calendar.jso
 
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   const data=await syncCalendar();
+  if(process.env.GITHUB_OUTPUT)await appendFile(process.env.GITHUB_OUTPUT,`version=${data.version}\n`);
   console.log(`${data.events.length} atividades atualizadas em ${data.fetchedAt}.`);
 }

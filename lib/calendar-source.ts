@@ -23,49 +23,135 @@ function dateValue(cell:XLSX.CellObject|undefined,location:string):string{
 function numeric(cell:XLSX.CellObject|undefined,location:string){if(typeof cell?.v!=="number"||!Number.isFinite(cell.v))throw new Error(`Nota ausente ou inválida: ${location}`);return cell.v;}
 const dayRange=(start:string,end:string)=>Array.from({length:Math.round((Date.parse(end)-Date.parse(start))/86400000)+1},(_,i)=>new Date(Date.parse(start+"T12:00:00Z")+i*86400000).toISOString().slice(0,10));
 
+type ActivityTable={row:number;column:number;group:string};
+const groupName=(value:unknown)=>{
+  const name=normalized(value);
+  return /^disciplinas? 0?1 e 0?2$/.test(name)?"Disciplinas 1 e 2":/^disciplinas? 0?3$/.test(name)?"Disciplina 3":undefined;
+};
+const displayActivity=(value:string)=>value
+  .replace(/^ATIVIDADE DE ESTUDO/i,"Atividade de Estudo")
+  .replace(/^HUB DE ATUALIDADES/i,"HUB de Atualidades")
+  .replace(/^PROVA SUB PRESENCIAL \(POLO\)/i,"Prova SUB presencial (polo)")
+  .replace(/^PROVA PRESENCIAL \(POLO\)/i,"Prova presencial (polo)")
+  .replace(/^MAPA SUBSTITUTIVO/i,"MAPA substitutivo");
+const eventKey=(module:string,kind:string,group:string,title:string)=>
+  [module,kind,group==="Disciplina 3"?"portfolio":"regular",normalized(title).replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")].join("-");
+
 export function parseWorkbook(bytes:ArrayBuffer|Uint8Array,fetchedAt=new Date().toISOString()):CalendarData{
-  // Não lê valores, datas ou cores da aba Calendário Acadêmico 2027.
+  // Apenas as abas de metodologia; títulos e seções definem as posições das tabelas.
   const names=XLSX.read(bytes,{type:"array",bookSheets:true}).SheetNames;
   const selected=names.filter(name=>/^calendario metodologia \d+[./]\d{4}$/.test(normalized(name)));
   if(selected.length!==4)throw new Error("As quatro abas de metodologia não foram encontradas. A última leitura foi preservada.");
   const workbook=XLSX.read(bytes,{type:"array",cellStyles:true,cellDates:false,sheets:selected});
   const events:CalendarEvent[]=[],marks:CalendarMark[]=[],modules:string[]=[];
   let academicYear=0;
-  const addMark=(e:CalendarEvent,color:string)=>{if(e.highlight)for(const date of dayRange(e.start,e.end))marks.push({date,kind:e.highlight,label:e.title,color,module:e.module,sourceCell:e.id});};
+  const addMark=(event:CalendarEvent,color:string)=>{
+    if(event.highlight)for(const date of dayRange(event.start,event.end))
+      marks.push({date,kind:event.highlight,label:event.title,color,module:event.module,sourceCell:event.id});
+  };
+  const addEvent=(event:CalendarEvent)=>{
+    if(events.some(item=>item.id===event.id))throw new Error("Atividade ou data duplicada em "+event.sourceSheet+": "+event.sourceText+".");
+    events.push(event);
+  };
   for(const name of selected){
-    const match=normalized(name).match(/(\d+)[./](\d{4})$/)!;const module=match[1],year=Number(match[2]);
-    if(academicYear&&academicYear!==year)throw new Error("Anos divergentes nas abas de metodologia.");academicYear=year;modules.push(module);
-    const sheet=workbook.Sheets[name],at=(c:string)=>sheet[c];
-    if(normalized(at("B3")?.v)!=="atividade"||normalized(at("D3")?.v)!=="inicio"||normalized(at("E3")?.v)!=="fim"||normalized(at("B11")?.v)!=="atividade")throw new Error(`Estrutura alterada em ${name}.`);
+    const match=normalized(name).match(/(\d+)[./](\d{4})$/)!;
+    const module=match[1],year=Number(match[2]);
+    if(academicYear&&academicYear!==year)throw new Error("Anos divergentes nas abas de metodologia.");
+    academicYear=year;modules.push(module);
+    const sheet=workbook.Sheets[name],range=XLSX.utils.decode_range(sheet["!ref"]||"A1");
+    const address=(column:number,row:number)=>XLSX.utils.encode_cell({c:column,r:row});
+    const at=(column:number,row:number,merged=false):XLSX.CellObject|undefined=>{
+      const cell=sheet[address(column,row)];
+      if(cell?.v!==undefined||!merged)return cell;
+      const area=sheet["!merges"]?.find(item=>item.s.c<=column&&item.e.c>=column&&item.s.r<=row&&item.e.r>=row);
+      return area?sheet[address(area.s.c,area.s.r)]:cell;
+    };
+    const tables:ActivityTable[]=[],releaseHeaders:{row:number;column:number}[]=[];
+    for(let row=range.s.r;row<=range.e.r;row++)for(let column=range.s.c;column<=range.e.c;column++){
+      const label=normalized(at(column,row)?.v);
+      if(label==="atividade"){
+        const fields=[0,1,2,3,4,5].map(offset=>normalized(at(column+offset,row)?.v));
+        if(fields[1]!=="tipo"||fields[2]!=="inicio"||!["fim","termino"].includes(fields[3])||fields[4]!=="nota"||fields[5]!=="total")
+          throw new Error("Cabeçalho de atividades inválido em "+name+"!"+address(column,row)+".");
+        const group=groupName(at(column-1,row,true)?.v);
+        if(!group)throw new Error("Disciplina não identificada em "+name+"!"+address(column,row)+".");
+        tables.push({row,column,group});
+      }
+      if(/^liberacao de notas?$/.test(label))releaseHeaders.push({row,column});
+    }
+    if(tables.length!==2||new Set(tables.map(table=>table.group)).size!==2||releaseHeaders.length!==2)
+      throw new Error("As duas tabelas de disciplinas e de liberação de notas não foram encontradas em "+name+".");
     const regular:CalendarEvent[]=[];
-    for(const row of [4,5,6,7,8,9,12,13]){
-      const group=row>=12?"Disciplina 3":"Disciplinas 1 e 2",raw=clean(at(`B${row}`)?.v);
-      if(!raw)throw new Error(`Atividade ausente em ${name}, linha ${row}.`);
-      const n=normalized(raw),sub=/sub/.test(n),exam=/prova/.test(n);
-      const title=raw.replace(/^ATIVIDADE DE ESTUDO/,'Atividade de Estudo').replace(/^HUB DE ATUALIDADES/,'HUB de Atualidades').replace(/^PROVA SUB PRESENCIAL \(POLO\)/,'Prova SUB presencial (polo)').replace(/^PROVA PRESENCIAL \(POLO\)/,'Prova presencial (polo)').replace(/^MAPA SUBSTITUTIVO/,'MAPA substitutivo')+(row>=12?' · Disciplina 3':'');
-      const start=dateValue(at(`D${row}`),`${name}!D${row}`),end=dateValue(at(`E${row}`),`${name}!E${row}`);
-      if(start>end)throw new Error(`Período inválido em ${name}, linha ${row}.`);
-      const type=clean(at(`C${row}`)?.v);if(!type)throw new Error(`Tipo ausente em ${name}, linha ${row}.`);
-      const event:CalendarEvent={id:`${module}-activity-${row}`,title,category:group,module,start,end,sourceCell:`B${row}:G${row}`,sourceText:raw,sourceSheet:name,kind:"activity",group,assessmentType:type,grade:numeric(at(`F${row}`),`${name}!F${row}`),total:numeric(at(`G${row<9?4:row}`),`${name}!G${row<9?4:row}`),...(sub?{highlight:"substitute"}:exam?{highlight:"exam"}:{})};
-      events.push(event);if(row<=8)regular.push(event);
-      const sourceColor=(at(`B${row}`)?.s as {fgColor?:{rgb?:string}})?.fgColor?.rgb?.slice(-6);
-      addMark(event,sub&&sourceColor&&/^[0-9a-f]{6}$/i.test(sourceColor)?`#${sourceColor}`:MODULE_COLORS[module]||"#60a5fa");
+    for(let index=0;index<tables.length;index++){
+      const table=tables[index],lastRow=(tables[index+1]?.row??range.e.r+1)-1;
+      const items:CalendarEvent[]=[];
+      let sectionTotal:XLSX.CellObject|undefined;
+      for(let row=table.row+1;row<=lastRow;row++){
+        const cells=[0,1,2,3,4,5].map(offset=>at(table.column+offset,row));
+        if(cells.every(cell=>clean(cell?.v)===""))continue;
+        const raw=clean(cells[0]?.v),type=clean(cells[1]?.v);
+        if(!raw||!type)throw new Error("Atividade ou tipo ausente em "+name+", linha "+(row+1)+".");
+        const key=normalized(raw),sub=/\bsub(?:\b|stitut)/.test(key),exam=/\bprova\b/.test(key);
+        const start=dateValue(cells[2],name+"!"+address(table.column+2,row));
+        const end=dateValue(cells[3],name+"!"+address(table.column+3,row));
+        if(start>end)throw new Error("Período inválido em "+name+", linha "+(row+1)+".");
+        const totalCell=at(table.column+5,row,true);
+        if(clean(totalCell?.v)!=="")sectionTotal=totalCell;
+        const grade=numeric(cells[4],name+"!"+address(table.column+4,row));
+        const total=numeric(sectionTotal,name+"!"+address(table.column+5,row));
+        if(grade<0||total<=0||grade>total)throw new Error("Nota fora do total da disciplina em "+name+", linha "+(row+1)+".");
+        const title=displayActivity(raw)+(table.group==="Disciplina 3"?" · Disciplina 3":"");
+        const event:CalendarEvent={
+          id:eventKey(module,"activity",table.group,raw),title,category:table.group,module,start,end,
+          sourceCell:address(table.column,row)+":"+address(table.column+5,row),sourceText:raw,sourceSheet:name,
+          kind:"activity",group:table.group,assessmentType:type,grade,total,
+          ...(sub?{highlight:"substitute"}:exam?{highlight:"exam"}:{})
+        };
+        addEvent(event);items.push(event);
+        if(table.group==="Disciplinas 1 e 2"&&!sub)regular.push(event);
+        const sourceColor=(cells[0]?.s as {fgColor?:{rgb?:string}})?.fgColor?.rgb?.slice(-6);
+        addMark(event,sub&&sourceColor&&/^[0-9a-f]{6}$/i.test(sourceColor)?"#"+sourceColor:MODULE_COLORS[module]||"#60a5fa");
+      }
+      const curricular=items.filter(event=>event.highlight!=="substitute");
+      if(!curricular.length)throw new Error("Tabela sem atividades curriculares em "+name+": "+table.group+".");
+      const total=curricular[0].total!;
+      if(curricular.some(event=>event.total!==total)||Math.abs(curricular.reduce((sum,event)=>sum+event.grade!,0)-total)>.001)
+        throw new Error("A soma das notas difere do total em "+name+": "+table.group+".");
     }
-    for(const row of [2,3,4,5,6,8,12,13]){
-      const raw=clean(at(`I${row}`)?.v);if(!raw)throw new Error(`Liberação ausente em ${name}, linha ${row}.`);
-      const date=dateValue(at(`J${row}`),`${name}!J${row}`),group=row>=12?"Disciplina 3":"Disciplinas 1 e 2";
-      const publication=row===8,cancel=row===6;
-      const activity=raw.replace(/\s*\(LIBERAÇÃO DE NOTA E GABARITO\)/i,'').replace('HUB DE ATUALIDADES','HUB de Atualidades').replace('MAPA SUBSTITUTIVO','MAPA substitutivo');
-      const title=publication?'Publicação de notas':cancel?'Cancelamento de questão':`${row>=3&&row<=5?'Nota e gabarito':'Liberação de nota'} · ${activity}${row>=12?' · Disciplina 3':''}`;
-      const event:CalendarEvent={id:`${module}-release-${row}`,title,category:cancel?'Cancelamento de questão':publication?'Publicação de notas':'Notas e gabaritos',module,start:date,end:date,sourceCell:`I${row}:J${row}`,sourceText:raw,sourceSheet:name,kind:"activity",group,...(!cancel?{highlight:"results"}:{})};
-      events.push(event);addMark(event,publication?'#38bdf8':'#67e8f9');
+    for(let index=0;index<releaseHeaders.length;index++){
+      const header=releaseHeaders[index],group=tables[index].group;
+      if(header.column<=tables[index].column+5)throw new Error("Tabela de liberação de notas inválida em "+name+".");
+      const lastRow=(releaseHeaders[index+1]?.row??range.e.r+1)-1;
+      let count=0;
+      for(let row=header.row+1;row<=lastRow;row++){
+        const raw=clean(at(header.column,row)?.v),dateCell=at(header.column+1,row);
+        if(!raw&&clean(dateCell?.v)==="")continue;
+        if(!raw)throw new Error("Descrição de liberação ausente em "+name+", linha "+(row+1)+".");
+        const date=dateValue(dateCell,name+"!"+address(header.column+1,row)),key=normalized(raw);
+        const publication=/^publicacao de notas?\b/.test(key),cancel=/^cancelamento de questao\b/.test(key);
+        const activity=displayActivity(raw.replace(/\s*\(LIBERAÇÃO DE NOTA E GABARITO\)/i,""));
+        const title=publication?"Publicação de notas":cancel?"Cancelamento de questão":
+          (/gabarito/.test(key)?"Nota e gabarito":"Liberação de nota")+" · "+activity+(group==="Disciplina 3"?" · Disciplina 3":"");
+        const event:CalendarEvent={
+          id:eventKey(module,"release",group,raw),title,category:cancel?"Cancelamento de questão":publication?"Publicação de notas":"Notas e gabaritos",
+          module,start:date,end:date,sourceCell:address(header.column,row)+":"+address(header.column+1,row),
+          sourceText:raw,sourceSheet:name,kind:"activity",group,...(!cancel?{highlight:"results"}:{})
+        };
+        addEvent(event);addMark(event,publication?"#38bdf8":"#67e8f9");count++;
+      }
+      if(!count)throw new Error("Tabela de liberação sem datas em "+name+": "+group+".");
     }
-    // Intervalo de atividades regulares, derivado exclusivamente da metodologia.
-    events.push({id:`${module}-period`,title:"Atividades regulares",category:"Períodos de atividades",module,start:regular.reduce((d,e)=>e.start<d?e.start:d,regular[0].start),end:regular.reduce((d,e)=>e.end>d?e.end:d,regular[0].end),sourceCell:"D4:E8",sourceText:"Atividades regulares",sourceSheet:name,kind:"period"});
+    addEvent({
+      id:module+"-period",title:"Atividades regulares",category:"Períodos de atividades",module,
+      start:regular.reduce((date,event)=>event.start<date?event.start:date,regular[0].start),
+      end:regular.reduce((date,event)=>event.end>date?event.end:date,regular[0].end),
+      sourceCell:regular.map(event=>event.sourceCell).join("; "),sourceText:"Atividades regulares",sourceSheet:name,kind:"period"
+    });
   }
-  modules.sort();if(modules.join(',')!=='51,52,53,54')throw new Error("Módulos de metodologia divergentes.");
-  const years=[...new Set([academicYear,...events.flatMap(e=>[Number(e.start.slice(0,4)),Number(e.end.slice(0,4))])])].sort();
-  return {title:`Calendário Metodologia ${academicYear}`,sheetName:selected.join('; '),academicYear,years,modules,moduleColors:MODULE_COLORS,events,marks,notes:[],warnings:[],version:"",fetchedAt};
+  modules.sort();
+  if(modules.join(",")!=="51,52,53,54")throw new Error("Módulos de metodologia divergentes.");
+  const years=[...new Set([academicYear,...events.flatMap(event=>[Number(event.start.slice(0,4)),Number(event.end.slice(0,4))])])].sort();
+  return{title:"Calendário Metodologia "+academicYear,sheetName:selected.join("; "),academicYear,years,modules,moduleColors:MODULE_COLORS,events,marks,notes:[],warnings:[],version:"",fetchedAt};
 }
 
 export async function fetchCalendar(signal?:AbortSignal):Promise<CalendarData>{

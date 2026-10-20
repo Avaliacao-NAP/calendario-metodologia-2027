@@ -162,7 +162,7 @@ export default function CalendarApp(){
     <p className="sr-only" role="status">Exibindo calendário, atividades e prazos de {selectedTrack.label}, {selectedTrack.subtitle}. {scopeLabel}.</p>
 
     <div id="module-content" className={`module-content ${isAnnual?"annual-scope":""}`}>
-    {isAnnual&&<MethodologyOverview/>}
+    {isAnnual&&<MethodologyOverview data={data}/>}
     <section className="discipline-selector activity-tone" style={modStyle(scopeColor)} aria-labelledby="discipline-selector-title">
       <div className="discipline-selector-heading"><h2 id="discipline-selector-title">Selecione as disciplinas</h2><span>{scopeLabel}</span></div>
       <div className="discipline-selector-options" role="group" aria-label={`Grupos de disciplinas · ${scopeLabel}`}>{DISCIPLINE_GROUPS.map(track=>{

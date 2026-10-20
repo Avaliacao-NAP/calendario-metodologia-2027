@@ -1,5 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { copyFileSync, writeFileSync } from "node:fs";
+
+// O HTML inicial usa a mesma leitura validada que o navegador consulta.
+copyFileSync("public/data/calendar.json", "lib/calendar-seed.json");
 
 const result = spawnSync(process.execPath, ["node_modules/next/dist/bin/next", "build", "--webpack"], {
   stdio: "inherit",
